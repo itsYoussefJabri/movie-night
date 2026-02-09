@@ -14,6 +14,7 @@ import {
   Trash2,
   AlertTriangle,
   X,
+  Crown,
 } from "lucide-react";
 
 const fadeUp = {
@@ -224,6 +225,11 @@ export default function Attendees() {
                     <span className="text-white text-sm font-medium truncate">
                       {a.names}
                     </span>
+                    {a.has_vip === 1 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gold/15 border border-gold/30 text-gold text-[10px] font-bold rounded-full shrink-0 uppercase tracking-wider">
+                        <Crown className="w-3 h-3" /> VIP
+                      </span>
+                    )}
                   </div>
 
                   {/* Serial */}

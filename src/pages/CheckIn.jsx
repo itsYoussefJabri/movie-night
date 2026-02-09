@@ -11,6 +11,7 @@ import {
   Users,
   RotateCcw,
   Keyboard,
+  Crown,
 } from "lucide-react";
 
 const fadeUp = {
@@ -367,6 +368,12 @@ export default function CheckIn() {
                   <p className="text-white font-semibold text-lg">
                     {scanResult.names}
                   </p>
+                  {scanResult.hasVip && (
+                    <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-gold/15 border border-gold/30 rounded-full">
+                      <Crown className="w-4 h-4 text-gold" />
+                      <span className="text-gold text-sm font-bold tracking-wide">VIP Ticket</span>
+                    </div>
+                  )}
                 </div>
               )}
 

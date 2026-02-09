@@ -49,9 +49,18 @@ async function initDB() {
       registration_id INTEGER NOT NULL,
       first_name TEXT NOT NULL,
       last_name TEXT NOT NULL,
+      vip INTEGER DEFAULT 0,
       FOREIGN KEY (registration_id) REFERENCES registrations(id)
     );
   `);
+
+  // Migrate: add vip column if missing (for existing databases)
+  try {
+    await db.execute("ALTER TABLE attendees ADD COLUMN vip INTEGER DEFAULT 0");
+    console.log("✅ Migrated: added vip column to attendees");
+  } catch {
+    // Column already exists — ignore
+  }
   console.log(
     `📦 Database ready (${process.env.TURSO_DATABASE_URL ? "Turso cloud" : "local SQLite"})`,
   );
@@ -121,8 +130,8 @@ app.post("/api/register", async (req, res) => {
     // Insert attendees
     for (const a of attendees) {
       await db.execute({
-        sql: "INSERT INTO attendees (registration_id, first_name, last_name) VALUES (?, ?, ?)",
-        args: [regId, a.firstName.trim(), a.lastName.trim()],
+        sql: "INSERT INTO attendees (registration_id, first_name, last_name, vip) VALUES (?, ?, ?, ?)",
+        args: [regId, a.firstName.trim(), a.lastName.trim(), a.vip ? 1 : 0],
       });
     }
 
@@ -130,6 +139,7 @@ app.post("/api/register", async (req, res) => {
     const qrData = JSON.stringify({
       serial,
       names: attendees.map((a) => `${a.firstName} ${a.lastName}`),
+      vips: attendees.map((a) => !!a.vip),
     });
     const qrDataUrl = await QRCode.toDataURL(qrData, {
       width: 400,
@@ -179,7 +189,7 @@ app.post("/api/register", async (req, res) => {
                     <tr><td style="padding:20px 30px;text-align:center;">
                       <div style="display:inline-block;padding:18px 40px;background:#fafafa;border-radius:12px;border:1px solid #eee;">
                         <p style="margin:0 0 10px;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Attendees</p>
-                        ${attendees.map((a, i) => `<p style="margin:0;padding:6px 0;font-size:15px;color:#333;font-weight:500;border-bottom:${i < attendees.length - 1 ? "1px solid #eee" : "none"};">${a.firstName} ${a.lastName}</p>`).join("")}
+                        ${attendees.map((a, i) => `<p style="margin:0;padding:6px 0;font-size:15px;color:#333;font-weight:500;border-bottom:${i < attendees.length - 1 ? "1px solid #eee" : "none"};">${a.firstName} ${a.lastName}${a.vip ? ' <span style="display:inline-block;background:linear-gradient(135deg,#f5c518,#e6a800);color:#1a1a1a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;letter-spacing:1px;">VIP</span>' : ''}</p>`).join("")}
                       </div>
                     </td></tr>
                     
@@ -261,7 +271,8 @@ app.post("/api/checkin", async (req, res) => {
 
     const result = await db.execute({
       sql: `
-        SELECT r.*, GROUP_CONCAT(a.first_name || ' ' || a.last_name, ', ') as names
+        SELECT r.*, GROUP_CONCAT(a.first_name || ' ' || a.last_name, ', ') as names,
+               GROUP_CONCAT(a.vip, ', ') as vips
         FROM registrations r
         JOIN attendees a ON a.registration_id = r.id
         WHERE r.serial = ?
@@ -279,6 +290,8 @@ app.post("/api/checkin", async (req, res) => {
       });
     }
 
+    const hasVip = reg.vips ? reg.vips.split(', ').some(v => v === '1') : false;
+
     if (reg.checked_in) {
       return res.json({
         valid: false,
@@ -286,6 +299,7 @@ app.post("/api/checkin", async (req, res) => {
         message: `Already checked in at ${reg.checked_in_at}`,
         names: reg.names,
         serial: reg.serial,
+        hasVip,
       });
     }
 
@@ -300,6 +314,7 @@ app.post("/api/checkin", async (req, res) => {
       message: "Welcome to Movie Night!",
       names: reg.names,
       serial: reg.serial,
+      hasVip,
     });
   } catch (err) {
     console.error("Check-in error:", err);
@@ -339,7 +354,8 @@ app.get("/api/attendees", async (req, res) => {
   try {
     const result = await db.execute(`
       SELECT r.serial, r.email, r.checked_in, r.checked_in_at, r.created_at,
-             GROUP_CONCAT(a.first_name || ' ' || a.last_name, ', ') as names
+             GROUP_CONCAT(a.first_name || ' ' || a.last_name, ', ') as names,
+             MAX(a.vip) as has_vip
       FROM registrations r
       JOIN attendees a ON a.registration_id = r.id
       GROUP BY r.id

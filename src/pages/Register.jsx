@@ -13,6 +13,7 @@ import {
   Plus,
   Users,
   Hash,
+  Crown,
 } from "lucide-react";
 
 const fadeUp = {
@@ -22,14 +23,14 @@ const fadeUp = {
 };
 
 export default function Register() {
-  const [attendees, setAttendees] = useState([{ firstName: "", lastName: "" }]);
+  const [attendees, setAttendees] = useState([{ firstName: "", lastName: "", vip: false }]);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const qrRef = useRef(null);
 
   const addAttendee = () => {
-    setAttendees([...attendees, { firstName: "", lastName: "" }]);
+    setAttendees([...attendees, { firstName: "", lastName: "", vip: false }]);
     toast.success("Added another guest slot");
   };
 
@@ -108,7 +109,7 @@ export default function Register() {
   };
 
   const resetForm = () => {
-    setAttendees([{ firstName: "", lastName: "" }]);
+    setAttendees([{ firstName: "", lastName: "", vip: false }]);
     setEmail("");
     setResult(null);
   };
@@ -217,6 +218,24 @@ export default function Register() {
                               className="w-full bg-dark/80 border border-dark-border rounded-lg px-4 py-2.5 text-white placeholder-neutral-600 text-sm transition-all"
                             />
                           </div>
+
+                          {/* VIP Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...attendees];
+                              updated[index].vip = !updated[index].vip;
+                              setAttendees(updated);
+                            }}
+                            className={`p-2.5 rounded-lg transition-all self-center border ${
+                              attendee.vip
+                                ? "bg-gold/20 border-gold/40 text-gold shadow-[0_0_12px_rgba(245,197,24,0.15)]"
+                                : "bg-transparent border-dark-border text-neutral-600 hover:text-gold hover:border-gold/30"
+                            }`}
+                            title={attendee.vip ? "VIP ticket" : "Standard ticket"}
+                          >
+                            <Crown className="w-4 h-4" />
+                          </button>
 
                           {attendees.length > 1 && (
                             <button
@@ -344,8 +363,13 @@ export default function Register() {
                   Registered Guests
                 </p>
                 {result.attendees.map((a, i) => (
-                  <p key={i} className="text-white font-medium">
+                  <p key={i} className="text-white font-medium flex items-center justify-center gap-2">
                     {a.firstName} {a.lastName}
+                    {a.vip && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gold/20 text-gold text-xs font-bold rounded-full border border-gold/30">
+                        <Crown className="w-3 h-3" /> VIP
+                      </span>
+                    )}
                   </p>
                 ))}
               </div>
