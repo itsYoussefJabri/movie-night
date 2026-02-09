@@ -206,7 +206,7 @@ app.post("/api/register", async (req, res) => {
         const rawEmail = [
           `From: ${SENDER_NAME} <${GMAIL_USER}>`,
           `To: ${email}`,
-          `Subject: Your Movie Night Ticket — ${serial}`,
+          `Subject: Your Movie Night Ticket`,
           `MIME-Version: 1.0`,
           `Content-Type: text/html; charset="UTF-8"`,
           ``,

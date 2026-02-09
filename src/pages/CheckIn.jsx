@@ -65,8 +65,6 @@ export default function CheckIn() {
       scanIntervalRef.current = setInterval(() => {
         scanFrame();
       }, 500);
-
-      toast.success("Camera ready — point at a QR code");
     } catch {
       toast.error("Camera access denied. Try manual entry.");
       setMode("manual");
