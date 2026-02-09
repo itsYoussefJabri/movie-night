@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Register from "./pages/Register";
 import CheckIn from "./pages/CheckIn";
@@ -14,9 +15,9 @@ export default function App() {
         <main className="pb-12">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/checkin" element={<CheckIn />} />
-            <Route path="/attendees" element={<Attendees />} />
+            <Route path="/register" element={<ProtectedRoute><Register /></ProtectedRoute>} />
+            <Route path="/checkin" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />
+            <Route path="/attendees" element={<ProtectedRoute><Attendees /></ProtectedRoute>} />
           </Routes>
         </main>
         <Toaster
