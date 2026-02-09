@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, ShieldAlert, Eye, EyeOff } from "lucide-react";
 
-const SECRET = "yousssefzouin";
+const SECRET = "youssefzouin";
 
 export default function PasswordGate({ onSuccess }) {
   const [code, setCode] = useState("");
@@ -12,8 +12,8 @@ export default function PasswordGate({ onSuccess }) {
 
   const handleChange = (e) => {
     const val = e.target.value;
-    // Only allow lowercase letters — no numbers, no special chars
-    if (/^[a-z]*$/.test(val)) {
+    // Only allow letters — no numbers, no special chars
+    if (/^[a-zA-Z]*$/.test(val)) {
       setCode(val);
       setError("");
     }
@@ -28,7 +28,7 @@ export default function PasswordGate({ onSuccess }) {
       return;
     }
 
-    if (code === SECRET) {
+    if (code.toLowerCase() === SECRET) {
       sessionStorage.setItem("mn_auth", "1");
       onSuccess();
     } else {
@@ -115,7 +115,7 @@ export default function PasswordGate({ onSuccess }) {
           </form>
 
           <p className="text-white/20 text-xs text-center mt-6">
-            Lowercase letters only
+            Letters only, no numbers
           </p>
         </div>
       </motion.div>
