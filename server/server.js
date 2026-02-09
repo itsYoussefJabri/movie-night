@@ -1,13 +1,15 @@
 import express from "express";
 import cors from "cors";
 import QRCode from "qrcode";
-import { Resend } from "resend";
+import { google } from "googleapis";
 import crypto from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@libsql/client";
+import dotenv from "dotenv";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 const app = express();
 const PORT = process.env.PORT || 3001;
 const isProd = process.env.NODE_ENV === "production";
@@ -63,18 +65,27 @@ function generateSerial() {
   return `${prefix}-${year}-${random}`;
 }
 
-// ── Email (Resend HTTP API) ───────────────────────────────────────
-const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+// ── Email (Gmail API over HTTPS) ──────────────────────────────────
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || "";
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || "";
+const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN || "";
+const GMAIL_USER = process.env.GMAIL_USER || "";
 const SENDER_NAME = process.env.SENDER_NAME || "Bdr Chaabi";
 
-let resend = null;
+let gmail = null;
 
 function setupMailer() {
-  if (RESEND_API_KEY) {
-    resend = new Resend(RESEND_API_KEY);
-    console.log(`📧 Resend email API ready`);
+  if (GMAIL_CLIENT_ID && GMAIL_CLIENT_SECRET && GMAIL_REFRESH_TOKEN && GMAIL_USER) {
+    const oAuth2Client = new google.auth.OAuth2(
+      GMAIL_CLIENT_ID,
+      GMAIL_CLIENT_SECRET,
+      "https://developers.google.com/oauthplayground"
+    );
+    oAuth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
+    gmail = google.gmail({ version: "v1", auth: oAuth2Client });
+    console.log(`📧 Gmail API ready (${GMAIL_USER})`);
   } else {
-    console.warn(`📧 No RESEND_API_KEY set — emails will not be sent`);
+    console.warn(`📧 Gmail API credentials missing — emails will not be sent`);
   }
 }
 
@@ -129,16 +140,11 @@ app.post("/api/register", async (req, res) => {
     // Build a public QR code URL (email clients block base64 data URIs)
     const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrData)}`;
 
-    // Send email via Resend
+    // Send email via Gmail API
     let emailSent = false;
-    if (resend) {
+    if (gmail) {
       try {
-        const { data, error } = await resend.emails.send({
-          from: `${SENDER_NAME} <onboarding@resend.dev>`,
-          replyTo: "bdrcitechaabi@gmail.com",
-          to: email,
-          subject: `Your Movie Night Ticket — ${serial}`,
-          html: `
+        const htmlBody = `
             <!DOCTYPE html>
             <html>
             <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -194,16 +200,32 @@ app.post("/api/register", async (req, res) => {
               </table>
             </body>
             </html>
-          `,
+          `;
 
+        // Build RFC 2822 email
+        const rawEmail = [
+          `From: ${SENDER_NAME} <${GMAIL_USER}>`,
+          `To: ${email}`,
+          `Subject: Your Movie Night Ticket — ${serial}`,
+          `MIME-Version: 1.0`,
+          `Content-Type: text/html; charset="UTF-8"`,
+          ``,
+          htmlBody,
+        ].join("\r\n");
+
+        const encodedMessage = Buffer.from(rawEmail)
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+
+        await gmail.users.messages.send({
+          userId: "me",
+          requestBody: { raw: encodedMessage },
         });
 
-        if (error) {
-          console.error("📧 Email failed:", error);
-        } else {
-          emailSent = true;
-          console.log(`📧 Email sent to ${email} (ID: ${data.id})`);
-        }
+        emailSent = true;
+        console.log(`📧 Email sent to ${email} via Gmail API`);
       } catch (emailErr) {
         console.error(
           "📧 Email failed (registration still saved):",
