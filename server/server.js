@@ -126,6 +126,9 @@ app.post("/api/register", async (req, res) => {
       color: { dark: "#0a0a0a", light: "#ffffff" },
     });
 
+    // Build a public QR code URL (email clients block base64 data URIs)
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrData)}`;
+
     // Send email via Resend
     let emailSent = false;
     if (resend) {
@@ -154,7 +157,7 @@ app.post("/api/register", async (req, res) => {
                     <tr><td style="padding:35px 30px 20px;text-align:center;">
                       <p style="margin:0 0 20px;font-size:13px;color:#888;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Your QR Ticket</p>
                       <div style="display:inline-block;padding:16px;background:#ffffff;border:2px solid #eee;border-radius:16px;">
-                        <img src="${qrDataUrl}" alt="QR Code" width="220" height="220" style="display:block;border-radius:8px;" />
+                        <img src="${qrImageUrl}" alt="QR Code" width="220" height="220" style="display:block;border-radius:8px;" />
                       </div>
                     </td></tr>
                     
