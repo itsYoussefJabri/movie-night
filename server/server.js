@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import QRCode from "qrcode";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import crypto from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -63,46 +63,19 @@ function generateSerial() {
   return `${prefix}-${year}-${random}`;
 }
 
-// ── Email transporter (Gmail SMTP) ───────────────────────────────
-const GMAIL_USER = process.env.GMAIL_USER || "bdrcitechaabi@gmail.com";
-const GMAIL_APP_PASSWORD =
-  process.env.GMAIL_APP_PASSWORD || "hxrq cjnv suix nmfw";
+// ── Email (Resend HTTP API) ───────────────────────────────────────
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const SENDER_NAME = process.env.SENDER_NAME || "Bdr Chaabi";
 
-let transporter = null;
+let resend = null;
 
-async function setupMailer() {
-  // Try port 587 (STARTTLS) first — works on more cloud providers than 465
-  const configs = [
-    { host: "smtp.gmail.com", port: 587, secure: false },
-    { host: "smtp.gmail.com", port: 465, secure: true },
-  ];
-
-  for (const cfg of configs) {
-    try {
-      transporter = nodemailer.createTransport({
-        ...cfg,
-        auth: {
-          user: GMAIL_USER,
-          pass: GMAIL_APP_PASSWORD,
-        },
-        tls: {
-          rejectUnauthorized: false,
-        },
-      });
-
-      await transporter.verify();
-      console.log(`📧 Gmail SMTP verified on port ${cfg.port} (${GMAIL_USER})`);
-      return; // success — stop trying
-    } catch (err) {
-      console.error(`📧 Port ${cfg.port} failed:`, err.message);
-      transporter = null;
-    }
+function setupMailer() {
+  if (RESEND_API_KEY) {
+    resend = new Resend(RESEND_API_KEY);
+    console.log(`📧 Resend email API ready`);
+  } else {
+    console.warn(`📧 No RESEND_API_KEY set — emails will not be sent`);
   }
-
-  console.error(`📧 All SMTP configs failed. Email will not work.`);
-  console.error(`   GMAIL_USER: ${GMAIL_USER}`);
-  console.error(`   GMAIL_APP_PASSWORD length: ${GMAIL_APP_PASSWORD?.length || 0}`);
 }
 
 // ── POST /api/register ──────────────────────────────────────────
@@ -153,82 +126,85 @@ app.post("/api/register", async (req, res) => {
       color: { dark: "#0a0a0a", light: "#ffffff" },
     });
 
-    // Send email
+    // Send email via Resend
     let emailSent = false;
-    if (transporter) {
+    if (resend) {
       try {
-        const info = await transporter.sendMail({
-        from: `"${SENDER_NAME}" <${GMAIL_USER}>`,
-        to: email,
-        subject: `Your Movie Night Ticket — ${serial}`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-          <body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Arial,sans-serif;">
-            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
-              <tr><td align="center">
-                <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        const { data, error } = await resend.emails.send({
+          from: `${SENDER_NAME} <onboarding@resend.dev>`,
+          to: email,
+          subject: `Your Movie Night Ticket — ${serial}`,
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+            <body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Arial,sans-serif;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:40px 0;">
+                <tr><td align="center">
+                  <table width="520" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+                    
+                    <!-- Header -->
+                    <tr><td style="background:linear-gradient(135deg,#e50914 0%,#b20710 100%);padding:45px 30px;text-align:center;">
+                      <h1 style="margin:0;font-size:34px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">MOVIE NIGHT</h1>
+                      <p style="margin:12px 0 0;font-size:14px;color:rgba(255,255,255,0.9);font-weight:400;">Your ticket is confirmed</p>
+                    </td></tr>
+                    
+                    <!-- QR Code -->
+                    <tr><td style="padding:35px 30px 20px;text-align:center;">
+                      <p style="margin:0 0 20px;font-size:13px;color:#888;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Your QR Ticket</p>
+                      <div style="display:inline-block;padding:16px;background:#ffffff;border:2px solid #eee;border-radius:16px;">
+                        <img src="cid:qrcode" alt="QR Code" width="220" height="220" style="display:block;border-radius:8px;" />
+                      </div>
+                    </td></tr>
+                    
+                    <!-- Serial -->
+                    <tr><td style="padding:0 30px;text-align:center;">
+                      <div style="display:inline-block;padding:18px 40px;background:#fafafa;border-radius:12px;border:1px solid #eee;">
+                        <p style="margin:0;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Serial Number</p>
+                        <p style="margin:6px 0 0;font-size:18px;font-weight:800;color:#e50914;letter-spacing:1px;font-family:'Courier New',monospace;white-space:nowrap;">${serial}</p>
+                      </div>
+                    </td></tr>
+                    
+                    <!-- Attendees -->
+                    <tr><td style="padding:20px 30px;text-align:center;">
+                      <div style="display:inline-block;padding:18px 40px;background:#fafafa;border-radius:12px;border:1px solid #eee;">
+                        <p style="margin:0 0 10px;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Attendees</p>
+                        ${attendees.map((a, i) => `<p style="margin:0;padding:6px 0;font-size:15px;color:#333;font-weight:500;border-bottom:${i < attendees.length - 1 ? "1px solid #eee" : "none"};">${a.firstName} ${a.lastName}</p>`).join("")}
+                      </div>
+                    </td></tr>
+                    
+                    <!-- Divider -->
+                    <tr><td style="padding:5px 30px 0;"><div style="border-top:1px dashed #ddd;"></div></td></tr>
+                    
+                    <!-- Footer -->
+                    <tr><td style="padding:25px 30px 35px;text-align:center;">
+                      <p style="margin:0 0 5px;font-size:13px;color:#666;">Present this QR code at the entrance for check-in.</p>
+                      <p style="margin:0;font-size:12px;color:#aaa;">This ticket is unique and cannot be duplicated.</p>
+                    </td></tr>
+                    
+                  </table>
                   
-                  <!-- Header -->
-                  <tr><td style="background:linear-gradient(135deg,#e50914 0%,#b20710 100%);padding:45px 30px;text-align:center;">
-                    <h1 style="margin:0;font-size:34px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">MOVIE NIGHT</h1>
-                    <p style="margin:12px 0 0;font-size:14px;color:rgba(255,255,255,0.9);font-weight:400;">Your ticket is confirmed</p>
-                  </td></tr>
-                  
-                  <!-- QR Code -->
-                  <tr><td style="padding:35px 30px 20px;text-align:center;">
-                    <p style="margin:0 0 20px;font-size:13px;color:#888;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Your QR Ticket</p>
-                    <div style="display:inline-block;padding:16px;background:#ffffff;border:2px solid #eee;border-radius:16px;">
-                      <img src="cid:qrcode" alt="QR Code" width="220" height="220" style="display:block;border-radius:8px;" />
-                    </div>
-                  </td></tr>
-                  
-                  <!-- Serial -->
-                  <tr><td style="padding:0 30px;text-align:center;">
-                    <div style="display:inline-block;padding:18px 40px;background:#fafafa;border-radius:12px;border:1px solid #eee;">
-                      <p style="margin:0;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Serial Number</p>
-                      <p style="margin:6px 0 0;font-size:18px;font-weight:800;color:#e50914;letter-spacing:1px;font-family:'Courier New',monospace;white-space:nowrap;">${serial}</p>
-                    </div>
-                  </td></tr>
-                  
-                  <!-- Attendees -->
-                  <tr><td style="padding:20px 30px;text-align:center;">
-                    <div style="display:inline-block;padding:18px 40px;background:#fafafa;border-radius:12px;border:1px solid #eee;">
-                      <p style="margin:0 0 10px;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Attendees</p>
-                      ${attendees.map((a, i) => `<p style="margin:0;padding:6px 0;font-size:15px;color:#333;font-weight:500;border-bottom:${i < attendees.length - 1 ? "1px solid #eee" : "none"};">${a.firstName} ${a.lastName}</p>`).join("")}
-                    </div>
-                  </td></tr>
-                  
-                  <!-- Divider -->
-                  <tr><td style="padding:5px 30px 0;"><div style="border-top:1px dashed #ddd;"></div></td></tr>
-                  
-                  <!-- Footer -->
-                  <tr><td style="padding:25px 30px 35px;text-align:center;">
-                    <p style="margin:0 0 5px;font-size:13px;color:#666;">Present this QR code at the entrance for check-in.</p>
-                    <p style="margin:0;font-size:12px;color:#aaa;">This ticket is unique and cannot be duplicated.</p>
-                  </td></tr>
-                  
-                </table>
-                
-                <!-- Below card -->
-                <p style="margin:25px 0 0;font-size:11px;color:#999;text-align:center;">Sent by ${SENDER_NAME} &bull; Movie Night Event</p>
-              </td></tr>
-            </table>
-          </body>
-          </html>
-        `,
-        attachments: [
-          {
-            filename: "qrcode.png",
-            content: qrDataUrl.split(",")[1],
-            encoding: "base64",
-            cid: "qrcode",
-          },
-        ],
-      });
-      emailSent = true;
-      console.log(`📧 Email sent to ${email} (Message ID: ${info.messageId})`);
+                  <!-- Below card -->
+                  <p style="margin:25px 0 0;font-size:11px;color:#999;text-align:center;">Sent by ${SENDER_NAME} &bull; Movie Night Event</p>
+                </td></tr>
+              </table>
+            </body>
+            </html>
+          `,
+          attachments: [
+            {
+              filename: "qrcode.png",
+              content: qrDataUrl.split(",")[1],
+            },
+          ],
+        });
+
+        if (error) {
+          console.error("📧 Email failed:", error);
+        } else {
+          emailSent = true;
+          console.log(`📧 Email sent to ${email} (ID: ${data.id})`);
+        }
       } catch (emailErr) {
         console.error("📧 Email failed (registration still saved):", emailErr.message);
       }
@@ -369,7 +345,7 @@ if (isProd) {
 // ── Start ────────────────────────────────────────────────────────
 async function start() {
   await initDB();
-  await setupMailer();
+  setupMailer();
   app.listen(PORT, () => {
     console.log(`\n🎬 Movie Night Server running on http://localhost:${PORT}`);
     console.log(`   Mode: ${isProd ? "PRODUCTION" : "DEVELOPMENT"}\n`);
