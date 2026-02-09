@@ -332,7 +332,7 @@ app.get("/api/attendees", async (req, res) => {
 
 // ── Catch-all: serve React app in production ─────────────────────
 if (isProd) {
-  app.get("*", (req, res) => {
+  app.get("/{*splat}", (req, res) => {
     res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
   });
 }
