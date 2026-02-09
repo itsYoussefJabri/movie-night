@@ -364,7 +364,8 @@ app.get("/api/attendees", async (req, res) => {
     const result = await db.execute(`
       SELECT r.serial, r.email, r.checked_in, r.checked_in_at, r.created_at,
              GROUP_CONCAT(a.first_name || ' ' || a.last_name, ', ') as names,
-             MAX(a.vip) as has_vip
+             MAX(a.vip) as has_vip,
+             GROUP_CONCAT(a.first_name || ' ' || a.last_name || ':' || a.vip, '|') as attendee_details
       FROM registrations r
       JOIN attendees a ON a.registration_id = r.id
       GROUP BY r.id

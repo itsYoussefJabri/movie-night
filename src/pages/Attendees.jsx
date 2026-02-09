@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   X,
   Crown,
+  ChevronDown,
 } from "lucide-react";
 
 const fadeUp = {
@@ -47,6 +48,19 @@ export default function Attendees() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const isAdmin = sessionStorage.getItem("mn_auth") === "1";
+  const [expandedRows, setExpandedRows] = useState({});
+
+  const toggleRow = (serial) => {
+    setExpandedRows((prev) => ({ ...prev, [serial]: !prev[serial] }));
+  };
+
+  const parseAttendees = (details) => {
+    if (!details) return [];
+    return details.split('|').map((entry) => {
+      const [name, vip] = entry.split(':');
+      return { name, vip: vip === '1' };
+    });
+  };
 
   const fetchAttendees = async () => {
     setLoading(true);
@@ -233,19 +247,70 @@ export default function Attendees() {
                   className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-6 py-4 hover:bg-dark-hover/50 transition-colors items-center"
                 >
                   {/* Names */}
-                  <div className="md:col-span-3 flex items-center gap-2">
-                    <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
-                      <Users className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="text-white text-sm font-medium truncate">
-                      {a.names}
-                    </span>
-                    {a.has_vip === 1 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gold/15 border border-gold/30 text-gold text-[10px] font-bold rounded-full shrink-0 uppercase tracking-wider">
-                        <Crown className="w-3 h-3" /> VIP
-                      </span>
-                    )}
-                  </div>
+                  {(() => {
+                    const people = parseAttendees(a.attendee_details);
+                    const isMultiple = people.length > 1;
+                    const isExpanded = expandedRows[a.serial];
+                    return (
+                      <div className="md:col-span-3">
+                        <div
+                          className={`flex items-center gap-2 ${isMultiple ? 'cursor-pointer select-none' : ''}`}
+                          onClick={() => isMultiple && toggleRow(a.serial)}
+                        >
+                          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                            <Users className="w-4 h-4 text-primary" />
+                          </div>
+                          {isMultiple ? (
+                            <>
+                              <span className="text-white text-sm font-medium">
+                                {people.length} guests
+                              </span>
+                              <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-white text-sm font-medium truncate">
+                                {people[0]?.name || a.names}
+                              </span>
+                              {people[0]?.vip && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gold/15 border border-gold/30 text-gold text-[10px] font-bold rounded-full shrink-0 uppercase tracking-wider">
+                                  <Crown className="w-3 h-3" /> VIP
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <AnimatePresence>
+                          {isMultiple && isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="mt-2 ml-10 space-y-1.5">
+                                {people.map((p, j) => (
+                                  <div key={j} className="flex items-center gap-2">
+                                    <span className="text-white text-sm">{p.name}</span>
+                                    {p.vip ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gold/15 border border-gold/30 text-gold text-[10px] font-bold rounded-full shrink-0 uppercase tracking-wider">
+                                        <Crown className="w-3 h-3" /> VIP
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center px-2 py-0.5 bg-neutral-800 border border-dark-border text-neutral-500 text-[10px] font-medium rounded-full shrink-0">
+                                        Standard
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })()}
 
                   {/* Serial */}
                   <div className="md:col-span-2 flex items-center gap-2">
