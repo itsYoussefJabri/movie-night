@@ -131,8 +131,10 @@ app.post("/api/register", async (req, res) => {
     });
 
     // Send email
+    let emailSent = false;
     if (transporter) {
-      const info = await transporter.sendMail({
+      try {
+        const info = await transporter.sendMail({
         from: `"${SENDER_NAME}" <${GMAIL_USER}>`,
         to: email,
         subject: `Your Movie Night Ticket — ${serial}`,
@@ -202,7 +204,11 @@ app.post("/api/register", async (req, res) => {
           },
         ],
       });
+      emailSent = true;
       console.log(`📧 Email sent to ${email} (Message ID: ${info.messageId})`);
+      } catch (emailErr) {
+        console.error("📧 Email failed (registration still saved):", emailErr.message);
+      }
     }
 
     res.json({
@@ -213,7 +219,7 @@ app.post("/api/register", async (req, res) => {
         firstName: a.firstName.trim(),
         lastName: a.lastName.trim(),
       })),
-      emailSent: true,
+      emailSent,
     });
   } catch (err) {
     console.error("Registration error:", err);
