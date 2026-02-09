@@ -132,6 +132,7 @@ app.post("/api/register", async (req, res) => {
       try {
         const { data, error } = await resend.emails.send({
           from: `${SENDER_NAME} <onboarding@resend.dev>`,
+          replyTo: "bdrcitechaabi@gmail.com",
           to: email,
           subject: `Your Movie Night Ticket — ${serial}`,
           html: `
@@ -206,7 +207,10 @@ app.post("/api/register", async (req, res) => {
           console.log(`📧 Email sent to ${email} (ID: ${data.id})`);
         }
       } catch (emailErr) {
-        console.error("📧 Email failed (registration still saved):", emailErr.message);
+        console.error(
+          "📧 Email failed (registration still saved):",
+          emailErr.message,
+        );
       }
     }
 
