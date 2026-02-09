@@ -368,6 +368,7 @@ app.get("/api/attendees", async (req, res) => {
       attendees: rows,
       total: rows.length,
       checkedIn: rows.filter((r) => r.checked_in).length,
+      vipCount: rows.filter((r) => r.has_vip).length,
     });
   } catch (err) {
     console.error("Fetch error:", err);

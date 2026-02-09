@@ -41,7 +41,7 @@ const modalContent = {
 
 export default function Attendees() {
   const [attendees, setAttendees] = useState([]);
-  const [stats, setStats] = useState({ total: 0, checkedIn: 0 });
+  const [stats, setStats] = useState({ total: 0, checkedIn: 0, vipCount: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -53,7 +53,7 @@ export default function Attendees() {
       const res = await fetch("/api/attendees");
       const data = await res.json();
       setAttendees(data.attendees || []);
-      setStats({ total: data.total || 0, checkedIn: data.checkedIn || 0 });
+      setStats({ total: data.total || 0, checkedIn: data.checkedIn || 0, vipCount: data.vipCount || 0 });
     } catch {
       toast.error("Failed to load attendees");
     } finally {
@@ -112,7 +112,7 @@ export default function Attendees() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           {[
             {
               label: "Registered",
@@ -134,6 +134,20 @@ export default function Attendees() {
               icon: Clock,
               color: "text-gold",
               bg: "bg-gold/10",
+            },
+            {
+              label: "VIP",
+              value: stats.vipCount,
+              icon: Crown,
+              color: "text-gold",
+              bg: "bg-gold/10",
+            },
+            {
+              label: "Normal",
+              value: stats.total - stats.vipCount,
+              icon: Ticket,
+              color: "text-neutral-300",
+              bg: "bg-neutral-800",
             },
             {
               label: "Check-In %",

@@ -227,7 +227,7 @@ export default function Register() {
                               updated[index].vip = !updated[index].vip;
                               setAttendees(updated);
                             }}
-                            className={`p-2.5 rounded-lg transition-all self-center border ${
+                            className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all border text-sm font-medium ${
                               attendee.vip
                                 ? "bg-gold/20 border-gold/40 text-gold shadow-[0_0_12px_rgba(245,197,24,0.15)]"
                                 : "bg-transparent border-dark-border text-neutral-600 hover:text-gold hover:border-gold/30"
@@ -235,6 +235,7 @@ export default function Register() {
                             title={attendee.vip ? "VIP ticket" : "Standard ticket"}
                           >
                             <Crown className="w-4 h-4" />
+                            <span className="sm:hidden">{attendee.vip ? "VIP Ticket" : "Standard Ticket"}</span>
                           </button>
 
                           {attendees.length > 1 && (
