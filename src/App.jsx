@@ -18,7 +18,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/register" element={<ProtectedRoute><Register /></ProtectedRoute>} />
             <Route path="/checkin" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />
-            <Route path="/attendees" element={<ProtectedRoute><Attendees /></ProtectedRoute>} />
+            <Route path="/attendees" element={<Attendees />} />
           </Routes>
         </main>
         <ToastContainer

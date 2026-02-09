@@ -46,6 +46,7 @@ export default function Attendees() {
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const isAdmin = sessionStorage.getItem("mn_auth") === "1";
 
   const fetchAttendees = async () => {
     setLoading(true);
@@ -219,7 +220,7 @@ export default function Attendees() {
                 <div className="col-span-3">Email</div>
                 <div className="col-span-2">Registered</div>
                 <div className="col-span-1 text-center">Status</div>
-                <div className="col-span-1 text-center">Actions</div>
+                {isAdmin && <div className="col-span-1 text-center">Actions</div>}
               </div>
 
               {/* Rows */}
@@ -290,15 +291,17 @@ export default function Attendees() {
                   </div>
 
                   {/* Delete */}
-                  <div className="md:col-span-1 flex items-center justify-start md:justify-center">
-                    <button
-                      onClick={() => setDeleteTarget(a)}
-                      className="p-2 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all duration-200 cursor-pointer bg-transparent border-none"
-                      title="Delete registration"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="md:col-span-1 flex items-center justify-start md:justify-center">
+                      <button
+                        onClick={() => setDeleteTarget(a)}
+                        className="p-2 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all duration-200 cursor-pointer bg-transparent border-none"
+                        title="Delete registration"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>
