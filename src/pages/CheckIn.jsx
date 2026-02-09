@@ -359,7 +359,30 @@ export default function CheckIn() {
                 {scanResult.message}
               </p>
 
-              {scanResult.names && (
+              {scanResult.attendeeList && scanResult.attendeeList.length > 0 ? (
+                <div className="bg-dark-card border border-dark-border rounded-xl p-4 mb-4 max-w-sm mx-auto">
+                  <div className="flex items-center justify-center gap-2 text-xs text-neutral-500 uppercase tracking-wider mb-3">
+                    <Users className="w-3.5 h-3.5" />
+                    Attendees
+                  </div>
+                  <div className="space-y-2">
+                    {scanResult.attendeeList.map((a, i) => (
+                      <div key={i} className="flex items-center justify-between gap-3 py-1.5">
+                        <span className="text-white font-semibold text-base">{a.name}</span>
+                        {a.vip ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gold/15 border border-gold/30 text-gold text-xs font-bold rounded-full shrink-0">
+                            <Crown className="w-3.5 h-3.5" /> VIP
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neutral-800 border border-dark-border text-neutral-400 text-xs font-medium rounded-full shrink-0">
+                            Standard
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : scanResult.names && (
                 <div className="bg-dark-card border border-dark-border rounded-xl p-4 mb-4 max-w-sm mx-auto">
                   <div className="flex items-center justify-center gap-2 text-xs text-neutral-500 uppercase tracking-wider mb-2">
                     <Users className="w-3.5 h-3.5" />
@@ -368,12 +391,6 @@ export default function CheckIn() {
                   <p className="text-white font-semibold text-lg">
                     {scanResult.names}
                   </p>
-                  {scanResult.hasVip && (
-                    <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-gold/15 border border-gold/30 rounded-full">
-                      <Crown className="w-4 h-4 text-gold" />
-                      <span className="text-gold text-sm font-bold tracking-wide">VIP Ticket</span>
-                    </div>
-                  )}
                 </div>
               )}
 

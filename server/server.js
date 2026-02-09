@@ -272,7 +272,8 @@ app.post("/api/checkin", async (req, res) => {
     const result = await db.execute({
       sql: `
         SELECT r.*, GROUP_CONCAT(a.first_name || ' ' || a.last_name, ', ') as names,
-               GROUP_CONCAT(a.vip, ', ') as vips
+               GROUP_CONCAT(a.vip, ', ') as vips,
+               GROUP_CONCAT(a.first_name || ' ' || a.last_name || ':' || a.vip, '|') as attendee_details
         FROM registrations r
         JOIN attendees a ON a.registration_id = r.id
         WHERE r.serial = ?
@@ -291,6 +292,12 @@ app.post("/api/checkin", async (req, res) => {
     }
 
     const hasVip = reg.vips ? reg.vips.split(', ').some(v => v === '1') : false;
+    const attendeeList = reg.attendee_details
+      ? reg.attendee_details.split('|').map(entry => {
+          const [name, vip] = entry.split(':');
+          return { name, vip: vip === '1' };
+        })
+      : [];
 
     if (reg.checked_in) {
       return res.json({
@@ -300,6 +307,7 @@ app.post("/api/checkin", async (req, res) => {
         names: reg.names,
         serial: reg.serial,
         hasVip,
+        attendeeList,
       });
     }
 
@@ -315,6 +323,7 @@ app.post("/api/checkin", async (req, res) => {
       names: reg.names,
       serial: reg.serial,
       hasVip,
+      attendeeList,
     });
   } catch (err) {
     console.error("Check-in error:", err);
