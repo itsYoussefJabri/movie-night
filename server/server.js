@@ -39,7 +39,7 @@ async function initDB() {
       email TEXT NOT NULL,
       checked_in INTEGER DEFAULT 0,
       checked_in_at TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
+      created_at TEXT DEFAULT (datetime('now', '+1 hour'))
     );
     
     CREATE TABLE IF NOT EXISTS attendees (
@@ -269,7 +269,7 @@ app.post("/api/checkin", async (req, res) => {
 
     // Mark as checked in
     await db.execute({
-      sql: "UPDATE registrations SET checked_in = 1, checked_in_at = datetime('now') WHERE serial = ?",
+      sql: "UPDATE registrations SET checked_in = 1, checked_in_at = datetime('now', '+1 hour') WHERE serial = ?",
       args: [serial],
     });
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
+import { toast } from "react-toastify";
 import {
   Users,
   RefreshCw,

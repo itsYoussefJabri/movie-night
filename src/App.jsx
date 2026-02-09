@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Navbar from "./components/Navbar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
@@ -20,24 +21,15 @@ export default function App() {
             <Route path="/attendees" element={<ProtectedRoute><Attendees /></ProtectedRoute>} />
           </Routes>
         </main>
-        <Toaster
+        <ToastContainer
           position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: "#141414",
-              color: "#e5e5e5",
-              border: "1px solid #2a2a2a",
-              borderRadius: "12px",
-              padding: "14px 20px",
-            },
-            success: {
-              iconTheme: { primary: "#46d369", secondary: "#141414" },
-            },
-            error: {
-              iconTheme: { primary: "#e50914", secondary: "#141414" },
-            },
-          }}
+          autoClose={4000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+          draggable
+          theme="colored"
         />
       </div>
     </BrowserRouter>

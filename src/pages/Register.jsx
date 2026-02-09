@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
+import { toast } from "react-toastify";
 import {
   UserPlus,
   Trash2,
