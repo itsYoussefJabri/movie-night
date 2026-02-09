@@ -71,15 +71,29 @@ const SENDER_NAME = process.env.SENDER_NAME || "Bdr Chaabi";
 
 let transporter = null;
 
-function setupMailer() {
+async function setupMailer() {
   transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
     auth: {
       user: GMAIL_USER,
       pass: GMAIL_APP_PASSWORD,
     },
+    tls: {
+      rejectUnauthorized: false,
+    },
   });
-  console.log(`📧 Gmail transporter ready (${GMAIL_USER})`);
+
+  try {
+    await transporter.verify();
+    console.log(`📧 Gmail SMTP verified and ready (${GMAIL_USER})`);
+  } catch (err) {
+    console.error(`📧 Gmail SMTP verification failed:`, err.message);
+    console.error(`   GMAIL_USER: ${GMAIL_USER}`);
+    console.error(`   GMAIL_APP_PASSWORD length: ${GMAIL_APP_PASSWORD?.length || 0}`);
+    transporter = null;
+  }
 }
 
 // ── POST /api/register ──────────────────────────────────────────
@@ -346,7 +360,7 @@ if (isProd) {
 // ── Start ────────────────────────────────────────────────────────
 async function start() {
   await initDB();
-  setupMailer();
+  await setupMailer();
   app.listen(PORT, () => {
     console.log(`\n🎬 Movie Night Server running on http://localhost:${PORT}`);
     console.log(`   Mode: ${isProd ? "PRODUCTION" : "DEVELOPMENT"}\n`);
