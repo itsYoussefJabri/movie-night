@@ -72,28 +72,37 @@ const SENDER_NAME = process.env.SENDER_NAME || "Bdr Chaabi";
 let transporter = null;
 
 async function setupMailer() {
-  transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: GMAIL_USER,
-      pass: GMAIL_APP_PASSWORD,
-    },
-    tls: {
-      rejectUnauthorized: false,
-    },
-  });
+  // Try port 587 (STARTTLS) first — works on more cloud providers than 465
+  const configs = [
+    { host: "smtp.gmail.com", port: 587, secure: false },
+    { host: "smtp.gmail.com", port: 465, secure: true },
+  ];
 
-  try {
-    await transporter.verify();
-    console.log(`📧 Gmail SMTP verified and ready (${GMAIL_USER})`);
-  } catch (err) {
-    console.error(`📧 Gmail SMTP verification failed:`, err.message);
-    console.error(`   GMAIL_USER: ${GMAIL_USER}`);
-    console.error(`   GMAIL_APP_PASSWORD length: ${GMAIL_APP_PASSWORD?.length || 0}`);
-    transporter = null;
+  for (const cfg of configs) {
+    try {
+      transporter = nodemailer.createTransport({
+        ...cfg,
+        auth: {
+          user: GMAIL_USER,
+          pass: GMAIL_APP_PASSWORD,
+        },
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+
+      await transporter.verify();
+      console.log(`📧 Gmail SMTP verified on port ${cfg.port} (${GMAIL_USER})`);
+      return; // success — stop trying
+    } catch (err) {
+      console.error(`📧 Port ${cfg.port} failed:`, err.message);
+      transporter = null;
+    }
   }
+
+  console.error(`📧 All SMTP configs failed. Email will not work.`);
+  console.error(`   GMAIL_USER: ${GMAIL_USER}`);
+  console.error(`   GMAIL_APP_PASSWORD length: ${GMAIL_APP_PASSWORD?.length || 0}`);
 }
 
 // ── POST /api/register ──────────────────────────────────────────
