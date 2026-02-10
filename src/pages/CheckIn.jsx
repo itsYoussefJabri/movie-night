@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Keyboard,
   Crown,
+  UtensilsCrossed,
 } from "lucide-react";
 
 const fadeUp = {
@@ -367,16 +368,24 @@ export default function CheckIn() {
                   </div>
                   <div className="space-y-2">
                     {scanResult.attendeeList.map((a, i) => (
-                      <div key={i} className="flex items-center justify-between gap-3 py-1.5">
-                        <span className="text-white font-semibold text-base">{a.name}</span>
-                        {a.vip ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gold/15 border border-gold/30 text-gold text-xs font-bold rounded-full shrink-0">
-                            <Crown className="w-3.5 h-3.5" /> VIP
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neutral-800 border border-dark-border text-neutral-400 text-xs font-medium rounded-full shrink-0">
-                            Standard
-                          </span>
+                      <div key={i} className="py-2 border-b border-dark-border last:border-0">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-white font-semibold text-base">{a.name}</span>
+                          {a.vip ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-gold/15 border border-gold/30 text-gold text-xs font-bold rounded-full shrink-0">
+                              <Crown className="w-3.5 h-3.5" /> VIP
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-neutral-800 border border-dark-border text-neutral-400 text-xs font-medium rounded-full shrink-0">
+                              Standard
+                            </span>
+                          )}
+                        </div>
+                        {a.vip && a.food && (
+                          <div className="mt-1.5 flex items-center gap-1.5 text-neutral-400 text-sm">
+                            <UtensilsCrossed className="w-3.5 h-3.5 text-gold" />
+                            <span>{a.food}</span>
+                          </div>
                         )}
                       </div>
                     ))}

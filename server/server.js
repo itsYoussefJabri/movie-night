@@ -50,6 +50,7 @@ async function initDB() {
       first_name TEXT NOT NULL,
       last_name TEXT NOT NULL,
       vip INTEGER DEFAULT 0,
+      food_choice TEXT DEFAULT NULL,
       FOREIGN KEY (registration_id) REFERENCES registrations(id)
     );
   `);
@@ -58,6 +59,14 @@ async function initDB() {
   try {
     await db.execute("ALTER TABLE attendees ADD COLUMN vip INTEGER DEFAULT 0");
     console.log("✅ Migrated: added vip column to attendees");
+  } catch {
+    // Column already exists — ignore
+  }
+
+  // Migrate: add food_choice column if missing
+  try {
+    await db.execute("ALTER TABLE attendees ADD COLUMN food_choice TEXT DEFAULT NULL");
+    console.log("✅ Migrated: added food_choice column to attendees");
   } catch {
     // Column already exists — ignore
   }
@@ -130,8 +139,8 @@ app.post("/api/register", async (req, res) => {
     // Insert attendees
     for (const a of attendees) {
       await db.execute({
-        sql: "INSERT INTO attendees (registration_id, first_name, last_name, vip) VALUES (?, ?, ?, ?)",
-        args: [regId, a.firstName.trim(), a.lastName.trim(), a.vip ? 1 : 0],
+        sql: "INSERT INTO attendees (registration_id, first_name, last_name, vip, food_choice) VALUES (?, ?, ?, ?, ?)",
+        args: [regId, a.firstName.trim(), a.lastName.trim(), a.vip ? 1 : 0, a.vip && a.foodChoice ? a.foodChoice : null],
       });
     }
 
@@ -140,6 +149,7 @@ app.post("/api/register", async (req, res) => {
       serial,
       names: attendees.map((a) => `${a.firstName} ${a.lastName}`),
       vips: attendees.map((a) => !!a.vip),
+      foods: attendees.map((a) => a.vip && a.foodChoice ? a.foodChoice : null),
     });
     const qrDataUrl = await QRCode.toDataURL(qrData, {
       width: 400,
@@ -189,7 +199,7 @@ app.post("/api/register", async (req, res) => {
                     <tr><td style="padding:20px 30px;text-align:center;">
                       <div style="display:inline-block;padding:18px 40px;background:#fafafa;border-radius:12px;border:1px solid #eee;">
                         <p style="margin:0 0 10px;font-size:11px;color:#999;text-transform:uppercase;letter-spacing:2px;font-weight:600;">Attendees</p>
-                        ${attendees.map((a, i) => `<p style="margin:0;padding:6px 0;font-size:15px;color:#333;font-weight:500;border-bottom:${i < attendees.length - 1 ? "1px solid #eee" : "none"};">${a.firstName} ${a.lastName}${a.vip ? ' <span style="display:inline-block;background:linear-gradient(135deg,#f5c518,#e6a800);color:#1a1a1a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;letter-spacing:1px;">VIP</span>' : ''}</p>`).join("")}
+                        ${attendees.map((a, i) => `<p style="margin:0;padding:6px 0;font-size:15px;color:#333;font-weight:500;border-bottom:${i < attendees.length - 1 ? "1px solid #eee" : "none"};">${a.firstName} ${a.lastName}${a.vip ? ' <span style="display:inline-block;background:linear-gradient(135deg,#f5c518,#e6a800);color:#1a1a1a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;letter-spacing:1px;">VIP</span>' : ''}${a.vip && a.foodChoice ? ` <span style="display:inline-block;font-size:11px;color:#666;margin-left:4px;">— ${a.foodChoice}</span>` : ''}</p>`).join("")}
                       </div>
                     </td></tr>
                     
@@ -273,7 +283,7 @@ app.post("/api/checkin", async (req, res) => {
       sql: `
         SELECT r.*, GROUP_CONCAT(a.first_name || ' ' || a.last_name, ', ') as names,
                GROUP_CONCAT(a.vip, ', ') as vips,
-               GROUP_CONCAT(a.first_name || ' ' || a.last_name || ':' || a.vip, '|') as attendee_details
+               GROUP_CONCAT(a.first_name || ' ' || a.last_name || ':' || a.vip || ':' || COALESCE(a.food_choice, ''), '|') as attendee_details
         FROM registrations r
         JOIN attendees a ON a.registration_id = r.id
         WHERE r.serial = ?
@@ -294,8 +304,11 @@ app.post("/api/checkin", async (req, res) => {
     const hasVip = reg.vips ? reg.vips.split(', ').some(v => v === '1') : false;
     const attendeeList = reg.attendee_details
       ? reg.attendee_details.split('|').map(entry => {
-          const [name, vip] = entry.split(':');
-          return { name, vip: vip === '1' };
+          const parts = entry.split(':');
+          const name = parts[0];
+          const vip = parts[1] === '1';
+          const food = parts[2] || null;
+          return { name, vip, food };
         })
       : [];
 
@@ -365,7 +378,7 @@ app.get("/api/attendees", async (req, res) => {
       SELECT r.serial, r.email, r.checked_in, r.checked_in_at, r.created_at,
              GROUP_CONCAT(a.first_name || ' ' || a.last_name, ', ') as names,
              MAX(a.vip) as has_vip,
-             GROUP_CONCAT(a.first_name || ' ' || a.last_name || ':' || a.vip, '|') as attendee_details
+             GROUP_CONCAT(a.first_name || ' ' || a.last_name || ':' || a.vip || ':' || COALESCE(a.food_choice, ''), '|') as attendee_details
       FROM registrations r
       JOIN attendees a ON a.registration_id = r.id
       GROUP BY r.id
@@ -374,11 +387,36 @@ app.get("/api/attendees", async (req, res) => {
 
     const rows = result.rows;
 
+    // Count individual attendees for food/price stats
+    let totalVipPersons = 0;
+    let totalNormalPersons = 0;
+    const foodCounts = {};
+    for (const row of rows) {
+      if (row.attendee_details) {
+        for (const entry of row.attendee_details.split('|')) {
+          const parts = entry.split(':');
+          const isVip = parts[1] === '1';
+          const food = parts[2] || null;
+          if (isVip) {
+            totalVipPersons++;
+            if (food) foodCounts[food] = (foodCounts[food] || 0) + 1;
+          } else {
+            totalNormalPersons++;
+          }
+        }
+      }
+    }
+    const totalRevenue = totalVipPersons * 30 + totalNormalPersons * 15;
+
     res.json({
       attendees: rows,
       total: rows.length,
       checkedIn: rows.filter((r) => r.checked_in).length,
       vipCount: rows.filter((r) => r.has_vip).length,
+      totalVipPersons,
+      totalNormalPersons,
+      foodCounts,
+      totalRevenue,
     });
   } catch (err) {
     console.error("Fetch error:", err);

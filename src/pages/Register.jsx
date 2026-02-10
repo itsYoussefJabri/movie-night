@@ -14,6 +14,7 @@ import {
   Users,
   Hash,
   Crown,
+  UtensilsCrossed,
 } from "lucide-react";
 
 const fadeUp = {
@@ -22,16 +23,22 @@ const fadeUp = {
   exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
 };
 
+const FOOD_OPTIONS = [
+  "Pizza Poulet",
+  "Pizza Thon",
+  "Pizza Viande Hach\u00e9e",
+  "Sandwich + Frite",
+];
+
 export default function Register() {
-  const [attendees, setAttendees] = useState([{ firstName: "", lastName: "", vip: false }]);
+  const [attendees, setAttendees] = useState([{ firstName: "", lastName: "", vip: false, foodChoice: "" }]);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const qrRef = useRef(null);
 
   const addAttendee = () => {
-    setAttendees([...attendees, { firstName: "", lastName: "", vip: false }]);
-    toast.success("Added another guest slot");
+    setAttendees([...attendees, { firstName: "", lastName: "", vip: false, foodChoice: "" }]);
   };
 
   const removeAttendee = (index) => {
@@ -53,6 +60,10 @@ export default function Register() {
     for (const a of attendees) {
       if (!a.firstName.trim() || !a.lastName.trim()) {
         toast.error("Please fill in all name fields");
+        return;
+      }
+      if (a.vip && !a.foodChoice) {
+        toast.error(`Please select a food option for VIP guest ${a.firstName}`);
         return;
       }
     }
@@ -109,8 +120,7 @@ export default function Register() {
   };
 
   const resetForm = () => {
-    setAttendees([{ firstName: "", lastName: "", vip: false }]);
-    setEmail("");
+    setAttendees([{ firstName: "", lastName: "", vip: false, foodChoice: "" }]);
     setResult(null);
   };
 
@@ -225,6 +235,7 @@ export default function Register() {
                             onClick={() => {
                               const updated = [...attendees];
                               updated[index].vip = !updated[index].vip;
+                              if (!updated[index].vip) updated[index].foodChoice = "";
                               setAttendees(updated);
                             }}
                             className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all border text-sm font-medium ${
@@ -235,7 +246,8 @@ export default function Register() {
                             title={attendee.vip ? "VIP ticket" : "Standard ticket"}
                           >
                             <Crown className="w-4 h-4" />
-                            <span className="sm:hidden">{attendee.vip ? "VIP Ticket" : "Standard Ticket"}</span>
+                            <span className="sm:hidden">{attendee.vip ? "VIP — 30 DH" : "Standard — 15 DH"}</span>
+                            <span className="hidden sm:inline">{attendee.vip ? "30 DH" : "15 DH"}</span>
                           </button>
 
                           {attendees.length > 1 && (
@@ -248,6 +260,42 @@ export default function Register() {
                             </button>
                           )}
                         </div>
+
+                        {/* Food Choice (VIP only) */}
+                        <AnimatePresence>
+                          {attendee.vip && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="mt-3 p-3 bg-gold/5 border border-gold/20 rounded-xl">
+                                <p className="flex items-center gap-1.5 text-xs font-medium text-gold mb-2.5">
+                                  <UtensilsCrossed className="w-3.5 h-3.5" />
+                                  Choose your meal
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {FOOD_OPTIONS.map((food) => (
+                                    <button
+                                      key={food}
+                                      type="button"
+                                      onClick={() => updateAttendee(index, "foodChoice", food)}
+                                      className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all border cursor-pointer ${
+                                        attendee.foodChoice === food
+                                          ? "bg-gold/20 border-gold/40 text-gold"
+                                          : "bg-dark/60 border-dark-border text-neutral-400 hover:border-gold/30 hover:text-gold"
+                                      }`}
+                                    >
+                                      {food}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </motion.div>
                     ))}
                   </AnimatePresence>
@@ -364,14 +412,21 @@ export default function Register() {
                   Registered Guests
                 </p>
                 {result.attendees.map((a, i) => (
-                  <p key={i} className="text-white font-medium flex items-center justify-center gap-2">
-                    {a.firstName} {a.lastName}
-                    {a.vip && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gold/20 text-gold text-xs font-bold rounded-full border border-gold/30">
-                        <Crown className="w-3 h-3" /> VIP
-                      </span>
+                  <div key={i} className="py-1.5 flex flex-col items-center gap-1">
+                    <p className="text-white font-medium flex items-center gap-2">
+                      {a.firstName} {a.lastName}
+                      {a.vip && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gold/20 text-gold text-xs font-bold rounded-full border border-gold/30">
+                          <Crown className="w-3 h-3" /> VIP
+                        </span>
+                      )}
+                    </p>
+                    {a.vip && a.foodChoice && (
+                      <p className="text-neutral-400 text-xs flex items-center gap-1">
+                        <UtensilsCrossed className="w-3 h-3" /> {a.foodChoice}
+                      </p>
                     )}
-                  </p>
+                  </div>
                 ))}
               </div>
 

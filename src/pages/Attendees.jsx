@@ -16,6 +16,8 @@ import {
   X,
   Crown,
   ChevronDown,
+  UtensilsCrossed,
+  Banknote,
 } from "lucide-react";
 
 const fadeUp = {
@@ -42,7 +44,7 @@ const modalContent = {
 
 export default function Attendees() {
   const [attendees, setAttendees] = useState([]);
-  const [stats, setStats] = useState({ total: 0, checkedIn: 0, vipCount: 0 });
+  const [stats, setStats] = useState({ total: 0, checkedIn: 0, vipCount: 0, totalVipPersons: 0, totalNormalPersons: 0, foodCounts: {}, totalRevenue: 0 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -57,8 +59,11 @@ export default function Attendees() {
   const parseAttendees = (details) => {
     if (!details) return [];
     return details.split('|').map((entry) => {
-      const [name, vip] = entry.split(':');
-      return { name, vip: vip === '1' };
+      const parts = entry.split(':');
+      const name = parts[0];
+      const vip = parts[1] === '1';
+      const food = parts[2] || null;
+      return { name, vip, food };
     });
   };
 
@@ -68,7 +73,15 @@ export default function Attendees() {
       const res = await fetch("/api/attendees");
       const data = await res.json();
       setAttendees(data.attendees || []);
-      setStats({ total: data.total || 0, checkedIn: data.checkedIn || 0, vipCount: data.vipCount || 0 });
+      setStats({
+        total: data.total || 0,
+        checkedIn: data.checkedIn || 0,
+        vipCount: data.vipCount || 0,
+        totalVipPersons: data.totalVipPersons || 0,
+        totalNormalPersons: data.totalNormalPersons || 0,
+        foodCounts: data.foodCounts || {},
+        totalRevenue: data.totalRevenue || 0,
+      });
     } catch {
       toast.error("Failed to load attendees");
     } finally {
@@ -127,7 +140,7 @@ export default function Attendees() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
           {[
             {
               label: "Registered",
@@ -152,24 +165,24 @@ export default function Attendees() {
             },
             {
               label: "VIP",
-              value: stats.vipCount,
+              value: stats.totalVipPersons,
               icon: Crown,
               color: "text-gold",
               bg: "bg-gold/10",
             },
             {
               label: "Normal",
-              value: stats.total - stats.vipCount,
+              value: stats.totalNormalPersons,
               icon: Ticket,
               color: "text-neutral-300",
               bg: "bg-neutral-800",
             },
             {
-              label: "Check-In %",
-              value: `${checkedInPercent}%`,
-              icon: CheckCircle2,
-              color: "text-neutral-300",
-              bg: "bg-neutral-800",
+              label: "Revenue",
+              value: `${stats.totalRevenue} DH`,
+              icon: Banknote,
+              color: "text-success",
+              bg: "bg-success/10",
             },
           ].map((stat) => (
             <div key={stat.label} className="glass-card rounded-xl p-4">
@@ -186,6 +199,46 @@ export default function Attendees() {
               </p>
             </div>
           ))}
+        </div>
+
+        {/* Food Orders Summary */}
+        {Object.keys(stats.foodCounts).length > 0 && (
+          <div className="glass-card rounded-xl p-4 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <UtensilsCrossed className="w-4 h-4 text-gold" />
+              <h3 className="text-sm font-semibold text-white">Food Orders</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {Object.entries(stats.foodCounts).map(([food, count]) => (
+                <div key={food} className="flex items-center justify-between px-3 py-2 bg-dark-card rounded-lg border border-dark-border">
+                  <span className="text-neutral-300 text-sm">{food}</span>
+                  <span className="text-gold font-bold text-sm ml-2">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Price Breakdown */}
+        <div className="glass-card rounded-xl p-4 mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <Banknote className="w-4 h-4 text-success" />
+            <h3 className="text-sm font-semibold text-white">Price Breakdown</h3>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center px-3 py-2.5 bg-dark-card rounded-lg border border-dark-border">
+              <p className="text-gold text-lg font-bold">{stats.totalVipPersons * 30} DH</p>
+              <p className="text-neutral-500 text-xs mt-0.5">{stats.totalVipPersons} VIP × 30</p>
+            </div>
+            <div className="text-center px-3 py-2.5 bg-dark-card rounded-lg border border-dark-border">
+              <p className="text-neutral-300 text-lg font-bold">{stats.totalNormalPersons * 15} DH</p>
+              <p className="text-neutral-500 text-xs mt-0.5">{stats.totalNormalPersons} Normal × 15</p>
+            </div>
+            <div className="text-center px-3 py-2.5 bg-success/10 rounded-lg border border-success/20">
+              <p className="text-success text-lg font-bold">{stats.totalRevenue} DH</p>
+              <p className="text-neutral-500 text-xs mt-0.5">Total</p>
+            </div>
+          </div>
         </div>
 
         {/* Search & Refresh */}
@@ -280,6 +333,13 @@ export default function Attendees() {
                             </>
                           )}
                         </div>
+                        {/* Single person food */}
+                        {!isMultiple && people[0]?.vip && people[0]?.food && (
+                          <div className="ml-10 mt-1 flex items-center gap-1 text-neutral-400 text-xs">
+                            <UtensilsCrossed className="w-3 h-3 text-gold" />
+                            <span>{people[0].food}</span>
+                          </div>
+                        )}
                         <AnimatePresence>
                           {isMultiple && isExpanded && (
                             <motion.div
@@ -291,16 +351,24 @@ export default function Attendees() {
                             >
                               <div className="mt-2 ml-10 space-y-1.5">
                                 {people.map((p, j) => (
-                                  <div key={j} className="flex items-center gap-2">
-                                    <span className="text-white text-sm">{p.name}</span>
-                                    {p.vip ? (
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gold/15 border border-gold/30 text-gold text-[10px] font-bold rounded-full shrink-0 uppercase tracking-wider">
-                                        <Crown className="w-3 h-3" /> VIP
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center px-2 py-0.5 bg-neutral-800 border border-dark-border text-neutral-500 text-[10px] font-medium rounded-full shrink-0">
-                                        Standard
-                                      </span>
+                                  <div key={j}>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-white text-sm">{p.name}</span>
+                                      {p.vip ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gold/15 border border-gold/30 text-gold text-[10px] font-bold rounded-full shrink-0 uppercase tracking-wider">
+                                          <Crown className="w-3 h-3" /> VIP
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-2 py-0.5 bg-neutral-800 border border-dark-border text-neutral-500 text-[10px] font-medium rounded-full shrink-0">
+                                          Standard
+                                        </span>
+                                      )}
+                                    </div>
+                                    {p.vip && p.food && (
+                                      <div className="mt-0.5 ml-0 flex items-center gap-1 text-neutral-400 text-xs">
+                                        <UtensilsCrossed className="w-3 h-3 text-gold" />
+                                        <span>{p.food}</span>
+                                      </div>
                                     )}
                                   </div>
                                 ))}
